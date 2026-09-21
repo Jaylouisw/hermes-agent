@@ -16,6 +16,18 @@ export function buildReactionPayload({ chatId, messageId, emoji, senderId, fromM
   };
 }
 
+/** Coerce a thrown value into a message string. A rejected non-Error (string, plain
+ * object) would otherwise serialize as `{ error: undefined }` and lose the reason. */
+export function errorMessage(err) {
+  if (err instanceof Error) return err.message;
+  if (typeof err === 'string') return err;
+  try {
+    return JSON.stringify(err) ?? String(err);
+  } catch {
+    return String(err);
+  }
+}
+
 export function registerReactionRoute(app, {
   getSocket,
   getConnectionState,
@@ -38,7 +50,7 @@ export function registerReactionRoute(app, {
       await sendWithTimeout(chatId, payload);
       return res.json({ success: true });
     } catch (err) {
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ error: errorMessage(err) });
     }
   });
 }

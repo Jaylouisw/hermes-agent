@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { extractBridgeEvent } from './bridge_helpers.js';
-import { buildReactionPayload, registerReactionRoute } from './reaction.js';
+import { buildReactionPayload, errorMessage, registerReactionRoute } from './reaction.js';
 
 function responseRecorder() {
   return {
@@ -170,4 +170,45 @@ test('registered /react route accepts empty emoji to remove a reaction', async (
   assert.deepEqual(res.payload, { success: true });
   assert.equal(sendCalls.length, 1);
   assert.equal(sendCalls[0][1].react.text, '');
+});
+
+test('errorMessage reports the reason for an Error and a thrown string', () => {
+  assert.equal(errorMessage(new Error('socket closed')), 'socket closed');
+  assert.equal(errorMessage('plain rejection'), 'plain rejection');
+});
+
+test('errorMessage never returns undefined for a non-Error rejection', () => {
+  const rendered = errorMessage({ code: 500, reason: 'nope' });
+
+  assert.equal(typeof rendered, 'string');
+  assert.match(rendered, /nope/);
+});
+
+test('registered /react route reports a non-Error rejection instead of an empty error', async () => {
+  let routeHandler;
+  const app = {
+    post(_path, handler) {
+      routeHandler = handler;
+    },
+  };
+  registerReactionRoute(app, {
+    getSocket: () => ({}),
+    getConnectionState: () => 'connected',
+    sendWithTimeout: async () => {
+      throw { code: 500, reason: 'bridge exploded' };
+    },
+  });
+
+  const res = responseRecorder();
+  await routeHandler({
+    body: {
+      chatId: '123@s.whatsapp.net',
+      messageId: 'msg-7',
+      emoji: '👀',
+    },
+  }, res);
+
+  assert.equal(res.statusCode, 500);
+  assert.equal(typeof res.payload.error, 'string');
+  assert.match(res.payload.error, /bridge exploded/);
 });
