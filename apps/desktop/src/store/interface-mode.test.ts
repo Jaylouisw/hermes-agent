@@ -143,4 +143,15 @@ describe('tiers', () => {
     setInterfaceMode('simple')
     expect($showsAdvancedChrome.get()).toBe(false)
   })
+
+  it('files a layout by the panes it shows, never by its name', async () => {
+    const { shownInMode, tierOfPanes } = await loadStore()
+    const shelf = [
+      { id: 'basic', panes: ['sessions', 'workspace'] },
+      { id: 'my-deck', panes: ['sessions', 'workspace', 'terminal'] }
+    ].map(layout => ({ ...layout, tier: tierOfPanes(layout.panes) }))
+
+    expect(shelf.filter(shownInMode('simple')).map(layout => layout.id)).toEqual(['basic'])
+    expect(shelf.filter(shownInMode('advanced')).map(layout => layout.id)).toEqual(['basic', 'my-deck'])
+  })
 })

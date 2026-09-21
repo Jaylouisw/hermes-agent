@@ -214,6 +214,18 @@ export interface Tiered {
   tier?: InterfaceTier
 }
 
+/**
+ * Panes Simple rests closed (`terminalOpen`, `fileBrowserOpen`, `reviewOpen`
+ * above). A layout that names one is a developer arrangement, so the layout
+ * picker files it under the same tier — a template is judged by what it shows,
+ * never by its id, and a user's saved decks sort the same way.
+ */
+export const ADVANCED_PANES: ReadonlySet<string> = new Set(['terminal', 'files', 'review'])
+
+export function tierOfPanes(paneIds: readonly string[]): InterfaceTier | undefined {
+  return paneIds.some(id => ADVANCED_PANES.has(id)) ? 'advanced' : undefined
+}
+
 /** Predicate for the filter a list already runs: `items.filter(shownInMode(mode))`. */
 export function shownInMode(mode: InterfaceMode): (item: Tiered) => boolean {
   return item => item.tier === undefined || TIER_MODES[item.tier].includes(mode)

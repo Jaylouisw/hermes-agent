@@ -18,10 +18,17 @@ import { useContributions } from '@/contrib/react/use-contributions'
 import type { Contribution } from '@/contrib/types'
 import { useI18n } from '@/i18n'
 import { cn } from '@/lib/utils'
-import { $interfaceMode, INTERFACE_MODES, type InterfaceMode, setInterfaceMode } from '@/store/interface-mode'
+import {
+  $interfaceMode,
+  INTERFACE_MODES,
+  type InterfaceMode,
+  setInterfaceMode,
+  shownInMode,
+  tierOfPanes
+} from '@/store/interface-mode'
 
 import type { LayoutNode } from '../model'
-import { isLayoutNode } from '../model'
+import { allPaneIds, isLayoutNode } from '../model'
 import { applyLayoutPreset, deleteUserPreset, isUserPreset, LAYOUTS_AREA, saveCurrentLayoutAs } from '../presets'
 import { $activePresetId } from '../store'
 import { $zoneEditorOpen } from '../zone-editor'
@@ -144,11 +151,16 @@ function ModeCard({ mode }: { mode: InterfaceMode }) {
 export function LayoutPicker() {
   const { t } = useI18n()
   const presets = useContributions(LAYOUTS_AREA)
+  const mode = useStore($interfaceMode)
   const [name, setName] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const templates = presets.filter(p => !isUserPreset(p.id) && isLayoutNode(p.data))
-  const custom = presets.filter(p => isUserPreset(p.id) && isLayoutNode(p.data))
+  // Simple curates the shelf too: a deck built around terminal, files or
+  // review is instrumentation, whichever of us saved it.
+  const shown = shownInMode(mode)
+  const layouts = presets.filter(p => isLayoutNode(p.data) && shown({ tier: tierOfPanes(allPaneIds(p.data)) }))
+  const templates = layouts.filter(p => !isUserPreset(p.id))
+  const custom = layouts.filter(p => isUserPreset(p.id))
 
   const commitSave = () => {
     if (!name.trim()) {
